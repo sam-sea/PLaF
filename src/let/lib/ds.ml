@@ -1,13 +1,15 @@
+(* Names: [Your Name(s) Here] *)
 (* This file defines expressed values and environments *)
 
 (* expressed values and environments are defined mutually recursively *)
-
 
 type exp_val =
   | NumVal of int
   | BoolVal of bool
   | PairVal of exp_val*exp_val
   | TupleVal of exp_val list
+  | ListVal of exp_val list
+
 type env =
   | EmptyEnv
   | ExtendEnv of string*exp_val*env
@@ -66,20 +68,22 @@ let empty_env : unit -> env ea_result = fun () ->
 let extend_env : string -> exp_val -> env ea_result = fun id v env ->
   Ok (ExtendEnv(id,v,env))
 
-let rec extend_env_list_helper =
+let rec extend_env_list_helper :
+  string list -> exp_val list -> env -> env ea_result =
   fun ids evs en ->
-  match ids,evs with
-  | [],[] -> en
-  | id::idt,ev::evt ->
-    ExtendEnv(id,ev,extend_env_list_helper idt evt en)
-  | _,_ -> failwith
-             "extend_env_list_helper: ids and evs have different sizes"
+  match ids, evs with
+  | [], [] -> return en
+  | id::idt, ev::evt ->
+    extend_env_list_helper idt evt en >>= fun new_env ->
+    return (ExtendEnv(id, ev, new_env))
+  | _, _ ->
+    error "extend_env_list: Arguments do not match parameters!"
   
-let extend_env_list =
+let extend_env_list : string list -> exp_val list -> env ea_result =
   fun ids evs ->
   fun en ->
-  Ok (extend_env_list_helper ids evs en)
-    
+  extend_env_list_helper ids evs en en
+
 let rec apply_env : string -> exp_val ea_result = fun id env ->
   match env with
   | EmptyEnv -> Error (id^" not found!")
@@ -87,7 +91,6 @@ let rec apply_env : string -> exp_val ea_result = fun id env ->
     if id=v
     then Ok ev
     else apply_env id tail
-
 
 
 (* operations on expressed values *)
@@ -100,7 +103,11 @@ let bool_of_boolVal : exp_val -> bool ea_result =  function
   |  BoolVal b -> return b
   | _ -> error "Expected a boolean!"
 
-let list_of_tupleVal : exp_val -> (exp_val list)  ea_result =  function
+let list_of_listVal : exp_val -> (exp_val list) ea_result = function
+  | ListVal l -> return l
+  | _ -> error "Expected a list!"
+
+let list_of_tupleVal : exp_val -> (exp_val list) ea_result =  function
   |  TupleVal l -> return l
   | _ -> error "Expected a tuple!"
            
@@ -114,6 +121,7 @@ let rec string_of_expval = function
   | PairVal (ev1,ev2) -> "PairVal("^string_of_expval ev1
                          ^","^ string_of_expval ev2^")"
   | TupleVal evs -> "TupleVal("^String.concat "," (List.map string_of_expval evs)^")"
+  | ListVal evs -> "ListVal["^String.concat ";" (List.map string_of_expval evs)^"]"
 
 let rec string_of_env' ac = function
   | EmptyEnv ->  "["^String.concat ",\n" ac^"]"
