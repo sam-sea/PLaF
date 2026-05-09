@@ -167,4 +167,3 @@ let add_sool_extension s =
   in match String.index_opt s '.' with (* allow extension to be optional *)
   | None -> s^".sool"
   | _ -> s  
-
