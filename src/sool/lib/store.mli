@@ -11,4 +11,3 @@ val deref: 'a t -> int -> 'a Ds.ea_result
 val set_ref : 'a t -> int -> 'a -> unit Ds.ea_result
 
 val string_of_store : ('a -> string) -> 'a t -> string
-
